@@ -6,27 +6,39 @@ module.exports = async function (context, req) {
     context.log('JavaScript HTTP trigger function processed a request.');
     var boundary = multipart.getBoundary(req.headers['content-type']);
     var body = req.body;
-    var parsedBody = multipart.Parse(body, boundary);
-    context.log(parsedBody);
-    
-    var filetype = parsedBody[0].type;
-    if (filetype == "image/png") {
-        ext = "png";
-    } else if (filetype == "image/jpeg") {
-        ext = "jpeg";
-    } else {
-        username = "invalidimage"
-        ext = "";
+
+    var responseMessage = ""
+
+    try {
+        var parsedBody = multipart.Parse(body, boundary);
+        context.log(parsedBody);
+        
+        var filetype = parsedBody[0].type;
+        if (filetype == "image/png") {
+            ext = "png";
+        } else if (filetype == "image/jpeg") {
+            ext = "jpeg";
+        } else {
+            username = "invalidimage"
+            ext = "";
+        }
+
+        var fileName = req.headers['codename'];
+
+        responseMessage = await uploadFile(parsedBody, ext, fileName);
+    } catch (err) {
+        context.log(err)
+        context.log("Undefined body image")
+        responseMessage = "Sorry! No image attached."
     }
 
-    var responseMessage = await uploadFile(parsedBody, ext);
     context.res = {
         body: responseMessage
     };
     console.log(responseMessage)
 }
 
-async function uploadFile(parsedBody, ext){
+async function uploadFile(parsedBody, ext, fileName){
     const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
     // Create a unique name for the container
     const containerName = "images";
@@ -38,7 +50,7 @@ async function uploadFile(parsedBody, ext){
     const containerClient = blobServiceClient.getContainerClient(containerName);
     
     // Create the container
-    const blobName = 'test' + "." + ext;
+    const blobName = fileName + "." + ext;
 
     // Get a block blob client
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
